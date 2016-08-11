@@ -67,7 +67,7 @@ static int demux_skipbyte;
 static struct tsdemux_ops *demux_ops;
 static irq_handler_t demux_handler;
 static void *demux_data;
-static DEFINE_SPINLOCK(demux_ops_lock);
+static __DEFINE_SPINLOCK(demux_ops_lock);
 
 void tsdemux_set_ops(struct tsdemux_ops *ops)
 {
@@ -1072,7 +1072,7 @@ void tsdemux_change_sid(unsigned int sid)
 void tsdemux_audio_reset(void)
 {
 	ulong flags;
-	DEFINE_SPINLOCK(lock);
+	__DEFINE_SPINLOCK(lock);
 
 	spin_lock_irqsave(&lock, flags);
 
@@ -1098,7 +1098,7 @@ void tsdemux_audio_reset(void)
 void tsdemux_sub_reset(void)
 {
 	ulong flags;
-	DEFINE_SPINLOCK(lock);
+	__DEFINE_SPINLOCK(lock);
 	u32 parser_sub_start_ptr;
 	u32 parser_sub_end_ptr;
 

@@ -307,7 +307,7 @@ void rm_set_vasid(u32 vid, u32 aid)
 void rm_audio_reset(void)
 {
 	ulong flags;
-	DEFINE_SPINLOCK(lock);
+	__DEFINE_SPINLOCK(lock);
 
 	spin_lock_irqsave(&lock, flags);
 

@@ -466,7 +466,7 @@ Err_1:
 void esparser_audio_reset(struct stream_buf_s *buf)
 {
 	ulong flags;
-	DEFINE_SPINLOCK(lock);
+	__DEFINE_SPINLOCK(lock);
 
 	spin_lock_irqsave(&lock, flags);
 
@@ -697,7 +697,7 @@ ssize_t esparser_write(struct file *file,
 void esparser_sub_reset(void)
 {
 	ulong flags;
-	DEFINE_SPINLOCK(lock);
+	__DEFINE_SPINLOCK(lock);
 	u32 parser_sub_start_ptr;
 	u32 parser_sub_end_ptr;
 
