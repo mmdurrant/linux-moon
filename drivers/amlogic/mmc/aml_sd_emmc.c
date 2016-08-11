@@ -386,9 +386,9 @@ static int aml_sd_emmc_execute_tuning_(struct mmc_host *mmc, u32 opcode,
 	int curr_win_start = -1, curr_win_size = 0;
 	sd_emmc_regs->gadjust = 0;
 tunning:
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	pdata->need_retuning = false;
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 	vclk = sd_emmc_regs->gclock;
 	vctrl = sd_emmc_regs->gcfg;
 	clk_div = clkc->div;
@@ -1641,11 +1641,11 @@ void aml_sd_emmc_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct amlsd_host *host = pdata->host;
 	unsigned long flags;
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	host->xfer_step = XFER_FINISHED;
 	host->mrq = NULL;
 	host->status = HOST_INVALID;
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 #ifdef CONFIG_MMC_AML_DEBUG
 	host->req_cnt--;
@@ -1706,9 +1706,9 @@ static void aml_sd_emmc_timeout(struct work_struct *work)
 
 	BUG_ON(!host->mrq || !host->mrq->cmd);
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	if (host->xfer_step == XFER_FINISHED) {
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 		sd_emmc_err("%s :timeout after xfer finished\n",
 			mmc_hostname(host->mmc));
 		return;
@@ -1723,7 +1723,7 @@ static void aml_sd_emmc_timeout(struct work_struct *work)
 		if (timeout_cnt > 30)
 			goto timeout_handle;
 
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 		sd_emmc_err("%s: cmd%d, ISR have been run, xfer_step=%d;\n",
 			mmc_hostname(host->mmc), host->mrq->cmd->opcode,
@@ -1755,11 +1755,11 @@ timeout_handle:
 		sd_emmc_err("Command retried failed\n");
 	}
 
-	/* spin_unlock_irqrestore(&host->mrq_lock, flags); */
+	/* raw_spin_unlock_irqrestore(&host->mrq_lock, flags); */
 
 	/* aml_sd_emmc_status(host); */
 
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 	aml_sd_emmc_read_response(host->mmc, mrq->cmd);
 	/* sd_emmc_err("time_start_cnt:%ld\n", time_start_cnt); */
 
@@ -1776,10 +1776,10 @@ timeout_handle:
 		aml_sd_emmc_send_stop(host);
 
 	} else{
-		spin_lock_irqsave(&host->mrq_lock, flags);
+		raw_spin_lock_irqsave(&host->mrq_lock, flags);
 		if (host->cmd_is_stop)
 			host->cmd_is_stop = 0;
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 		aml_sd_emmc_request_done(host->mmc, mrq);
 	}
@@ -1795,9 +1795,9 @@ static void aml_sd_emmc_tuning_timer(struct work_struct *work)
 	struct amlsd_host *host = (void *)pdata->host;
 	unsigned long flags;
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	pdata->need_retuning = true;
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 }
 
 /*cmd request interface*/
@@ -1823,10 +1823,10 @@ void aml_sd_emmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	/* only for SDCARD */
 	if (!pdata->is_in || (!host->init_flag && aml_card_type_sd(pdata))) {
-		spin_lock_irqsave(&host->mrq_lock, flags);
+		raw_spin_lock_irqsave(&host->mrq_lock, flags);
 		mrq->cmd->error = -ENOMEDIUM;
 		mrq->cmd->retries = 0;
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 		mmc_request_done(mmc, mrq);
 		return;
 	}
@@ -1881,7 +1881,7 @@ void aml_sd_emmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	aml_dbg_verify_pinmux(pdata);
 #endif
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	if (host->xfer_step != XFER_FINISHED && host->xfer_step != XFER_INIT)
 		sd_emmc_err("host->xfer_step %d\n", host->xfer_step);
 
@@ -1896,7 +1896,7 @@ void aml_sd_emmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	/*setup reg for all cmd*/
 	aml_sd_emmc_start_cmd(pdata, mrq);
 	host->xfer_step = XFER_AFTER_START;
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 }
 
 /*sd_emmc controller irq*/
@@ -1939,7 +1939,7 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 	} else if (!(vstat & 0x3fff)) {
 		return IRQ_HANDLED;
 	}
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	mrq = host->mrq;
 	mmc = host->mmc;
 	pdata = mmc_priv(mmc);
@@ -1973,12 +1973,12 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 		}
 		if (host->xfer_step == XFER_FINISHED ||
 			host->xfer_step == XFER_TIMER_TIMEOUT){
-			spin_unlock_irqrestore(&host->mrq_lock, flags);
+			raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 			return IRQ_HANDLED;
 		}
 	/* WARN_ON(!mrq); */
 	/* aml_sd_emmc_print_reg(host); */
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 		return IRQ_HANDLED;
 	}
 #if 0
@@ -2007,7 +2007,7 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 		pdata->caling = 0;
 #endif
 	sd_emmc_regs->gstatus &= 0xffff;
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 	/* for debug */
 
@@ -2075,12 +2075,12 @@ void aml_sd_emmc_send_stop(struct amlsd_host *host)
 	/*Already in mrq_lock*/
 	if (delayed_work_pending(&host->timeout))
 		cancel_delayed_work(&host->timeout);
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	sd_emmc_err_bak = host->mrq->cmd->error;
 	host->mrq->cmd->error = 0;
 	host->cmd_is_stop = 1;
 	aml_sd_emmc_start_cmd(pdata, &aml_sd_emmc_stop);
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 }
 
 #ifdef SD_EMMC_DATA_TASKLET
@@ -2105,7 +2105,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 	/* pr_info("%s %d cmd:%d time_cost:%dms\n",
 		__func__, __LINE__, mrq->cmd->opcode, time_start_cnt); */
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	mrq = host->mrq;
 	xfer_step = host->xfer_step;
 	status = host->status;
@@ -2116,7 +2116,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 	if ((xfer_step == XFER_FINISHED) || (xfer_step == XFER_TIMER_TIMEOUT)) {
 		sd_emmc_err("Warning: %s xfer_step=%d, host->status=%d\n",
 			mmc_hostname(host->mmc), xfer_step, status);
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 #ifdef SD_EMMC_DATA_TASKLET
 		return;
 #else
@@ -2132,7 +2132,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 			mmc_hostname(host->mmc), xfer_step);
 		if (xfer_step == XFER_FINISHED ||
 			xfer_step == XFER_TIMER_TIMEOUT){
-			spin_unlock_irqrestore(&host->mrq_lock, flags);
+			raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 #ifdef SD_EMMC_DATA_TASKLET
 			return;
 #else
@@ -2145,7 +2145,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 	if (host->cmd_is_stop) {
 		host->cmd_is_stop = 0;
 		mrq->cmd->error = sd_emmc_err_bak;
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 		if (delayed_work_pending(&host->timeout))
 			cancel_delayed_work(&host->timeout);
 		aml_sd_emmc_request_done(host->mmc, host->mrq);
@@ -2157,7 +2157,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 		return IRQ_HANDLED;
 #endif
 	}
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 	BUG_ON(!host->mrq->cmd);
 
@@ -2185,9 +2185,9 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 		} else{
 			host->xfer_step = XFER_TASKLET_CMD;
 		}
-		spin_lock_irqsave(&host->mrq_lock, flags);
+		raw_spin_lock_irqsave(&host->mrq_lock, flags);
 		mrq->cmd->error = 0;
-		spin_unlock_irqrestore(&host->mrq_lock, flags);
+		raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 		/* check ready?? */
 		/*Wait command busy*/
@@ -2294,7 +2294,7 @@ static void aml_sd_emmc_set_clk_rate(struct mmc_host *mmc, unsigned int clk_ios)
 		return; /* clk_src_div = -1; */
 	}
 
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 
 	clk_div = (clk_rate / clk_ios) + (!!(clk_rate % clk_ios));
 
@@ -2310,7 +2310,7 @@ static void aml_sd_emmc_set_clk_rate(struct mmc_host *mmc, unsigned int clk_ios)
 	/*Wait for a while after clock setting*/
 	/* udelay(100); */
 
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 	return;
 }
@@ -2451,7 +2451,7 @@ static void aml_sd_emmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	struct sd_emmc_irq_en *irqc = (struct sd_emmc_irq_en *)&virqc;
 
 	host->sdio_irqen = enable;
-	spin_lock_irqsave(&host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&host->mrq_lock, flags);
 	vclock = sd_emmc_regs->gclock;
 	vconf = sd_emmc_regs->gcfg;
 	virqc = sd_emmc_regs->girq_en;
@@ -2469,7 +2469,7 @@ static void aml_sd_emmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	sd_emmc_regs->girq_en = virqc;
 	sd_emmc_regs->gclock = vclock;
 
-	spin_unlock_irqrestore(&host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&host->mrq_lock, flags);
 
 	/* check if irq already occurred */
 	aml_sd_emmc_check_sdio_irq(host);
@@ -2691,7 +2691,7 @@ static struct amlsd_host *aml_sd_emmc_init_host(struct amlsd_host *host)
 	INIT_DELAYED_WORK(&host->timeout, aml_sd_emmc_timeout);
 #endif
 
-	spin_lock_init(&host->mrq_lock);
+	raw_spin_lock_init(&host->mrq_lock);
 	host->xfer_step = XFER_INIT;
 
 	INIT_LIST_HEAD(&host->sibling);

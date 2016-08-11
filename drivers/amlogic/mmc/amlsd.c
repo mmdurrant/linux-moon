@@ -1190,9 +1190,9 @@ static int aml_cmd_invalid(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct amlsd_platform *pdata = mmc_priv(mmc);
 	unsigned long flags;
 
-	spin_lock_irqsave(&pdata->host->mrq_lock, flags);
+	raw_spin_lock_irqsave(&pdata->host->mrq_lock, flags);
 	mrq->cmd->error = -EINVAL;
-	spin_unlock_irqrestore(&pdata->host->mrq_lock, flags);
+	raw_spin_unlock_irqrestore(&pdata->host->mrq_lock, flags);
 	mmc_request_done(mmc, mrq);
 
 	return -EINVAL;
