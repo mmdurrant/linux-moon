@@ -27,7 +27,7 @@
 /* Local Headers */
 #include "vout_log.h"
 
-static BLOCKING_NOTIFIER_HEAD(vout_notifier_list);
+SRCU_NOTIFIER_HEAD(vout_notifier_list);
 static DEFINE_MUTEX(vout_mutex);
 
 static struct vout_module_s vout_module = {
@@ -44,7 +44,7 @@ static struct vout_module_s vout_module = {
  */
 int vout_register_client(struct notifier_block *nb)
 {
-	return blocking_notifier_chain_register(&vout_notifier_list, nb);
+	return srcu_notifier_chain_register(&vout_notifier_list, nb);
 }
 EXPORT_SYMBOL(vout_register_client);
 
@@ -54,7 +54,7 @@ EXPORT_SYMBOL(vout_register_client);
  */
 int vout_unregister_client(struct notifier_block *nb)
 {
-	return blocking_notifier_chain_unregister(&vout_notifier_list, nb);
+	return srcu_notifier_chain_unregister(&vout_notifier_list, nb);
 }
 EXPORT_SYMBOL(vout_unregister_client);
 
@@ -64,7 +64,7 @@ EXPORT_SYMBOL(vout_unregister_client);
  */
 int vout_notifier_call_chain(unsigned long val, void *v)
 {
-	return blocking_notifier_call_chain(&vout_notifier_list, val, v);
+	return srcu_notifier_call_chain(&vout_notifier_list, val, v);
 }
 EXPORT_SYMBOL_GPL(vout_notifier_call_chain);
 
