@@ -542,13 +542,13 @@ static int set_parameters(dwc_otg_core_if_t *core_if)
 /***************************************************
 			notifier
 ****************************************************/
-static BLOCKING_NOTIFIER_HEAD(dwc_otg_power_notifier_list);
+SRCU_NOTIFIER_HEAD(dwc_otg_power_notifier_list);
 
 int dwc_otg_power_register_notifier(struct notifier_block *nb)
 {
 	int ret;
 
-	ret = blocking_notifier_chain_register(&dwc_otg_power_notifier_list, nb);
+	ret = srcu_notifier_chain_register(&dwc_otg_power_notifier_list, nb);
 
 	return ret;
 }
@@ -558,23 +558,23 @@ int dwc_otg_power_unregister_notifier(struct notifier_block *nb)
 {
 	int ret;
 
-	ret = blocking_notifier_chain_unregister(&dwc_otg_power_notifier_list, nb);
+	ret = srcu_notifier_chain_unregister(&dwc_otg_power_notifier_list, nb);
 	return ret;
 }
 EXPORT_SYMBOL(dwc_otg_power_unregister_notifier);
 
 void dwc_otg_power_notifier_call(char is_power_on)
 {
-	blocking_notifier_call_chain(&dwc_otg_power_notifier_list, is_power_on, NULL);
+	srcu_notifier_call_chain(&dwc_otg_power_notifier_list, is_power_on, NULL);
 }
 
-static BLOCKING_NOTIFIER_HEAD(dwc_otg_charger_detect_notifier_list);
+SRCU_NOTIFIER_HEAD(dwc_otg_charger_detect_notifier_list);
 
 int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb)
 {
 	int ret;
 
-	ret = blocking_notifier_chain_register(&dwc_otg_charger_detect_notifier_list, nb);
+	ret = srcu_notifier_chain_register(&dwc_otg_charger_detect_notifier_list, nb);
 
 	return ret;
 }
@@ -584,14 +584,14 @@ int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb)
 {
 	int ret;
 
-	ret = blocking_notifier_chain_unregister(&dwc_otg_charger_detect_notifier_list, nb);
+	ret = srcu_notifier_chain_unregister(&dwc_otg_charger_detect_notifier_list, nb);
 	return ret;
 }
 EXPORT_SYMBOL(dwc_otg_charger_detect_unregister_notifier);
 
 void dwc_otg_charger_detect_notifier_call(int bc_mode)
 {
-	blocking_notifier_call_chain(&dwc_otg_charger_detect_notifier_list, bc_mode, NULL);
+	srcu_notifier_call_chain(&dwc_otg_charger_detect_notifier_list, bc_mode, NULL);
 }
 
 #define FORCE_ID_CLEAR	-1
