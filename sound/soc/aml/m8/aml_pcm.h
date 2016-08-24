@@ -19,7 +19,7 @@
 #define __AML_PCM_H__
 
 struct aml_pcm_runtime_data {
-	spinlock_t			lock;
+	raw_spinlock_t			lock;
 	dma_addr_t          buffer_start;
 	unsigned int        buffer_size;
 	unsigned int        buffer_offset;

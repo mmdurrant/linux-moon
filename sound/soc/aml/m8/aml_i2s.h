@@ -32,7 +32,7 @@ struct audio_stream {
 	unsigned int size;
 	unsigned int sample_rate;
 	unsigned int I2S_addr;
-	spinlock_t lock;
+	raw_spinlock_t lock;
 	struct snd_pcm_substream *stream;
 	unsigned i2s_mode; /* 0:master, 1:slave, */
 	unsigned device_type;

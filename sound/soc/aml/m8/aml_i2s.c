@@ -293,7 +293,7 @@ static int aml_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 #if USE_HRTIMER == 0
 		del_timer_sync(&prtd->timer);
 #endif
-		spin_lock(&s->lock);
+		raw_spin_lock(&s->lock);
 #if USE_HRTIMER == 0
 		prtd->timer.expires = jiffies + 1;
 		del_timer(&prtd->timer);
@@ -302,16 +302,16 @@ static int aml_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		s->xrun_num = 0;
 		s->active = 1;
-		spin_unlock(&s->lock);
+		raw_spin_unlock(&s->lock);
 		break;		/* SNDRV_PCM_TRIGGER_START */
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* TODO */
-		spin_lock(&s->lock);
+		raw_spin_lock(&s->lock);
 		s->active = 0;
 		s->xrun_num = 0;
-		spin_unlock(&s->lock);
+		raw_spin_unlock(&s->lock);
 		break;
 	default:
 		ret = -EINVAL;
@@ -363,7 +363,7 @@ static enum hrtimer_restart aml_i2s_hrtimer_callback(struct hrtimer *timer)
 		hrtimer_forward_now(timer, ns_to_ktime(HRTIMER_PERIOD));
 		return HRTIMER_RESTART;
 	}
-	/* spin_lock_irqsave(&s->lock, flag); */
+	/* raw_spin_lock_irqsave(&s->lock, flag); */
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		last_ptr = read_i2s_rd_ptr();
@@ -392,7 +392,7 @@ static enum hrtimer_restart aml_i2s_hrtimer_callback(struct hrtimer *timer)
 			snd_pcm_period_elapsed(substream);
 		}
 	}
-	/* spin_unlock_irqrestore(&s->lock, flag); */
+	/* raw_spin_unlock_irqrestore(&s->lock, flag); */
 	hrtimer_forward_now(timer, ns_to_ktime(HRTIMER_PERIOD));
 	return HRTIMER_RESTART;
 }
@@ -407,7 +407,7 @@ static void aml_i2s_timer_callback(unsigned long data)
 	unsigned int last_ptr, size = 0;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (s->active == 1) {
-			spin_lock(&s->lock);
+			raw_spin_lock(&s->lock);
 			if (s->device_type == AML_AUDIO_I2SOUT)
 				last_ptr = read_i2s_rd_ptr();
 			else
@@ -423,18 +423,18 @@ static void aml_i2s_timer_callback(unsigned long data)
 			s->size += bytes_to_frames(substream->runtime, size);
 			if (s->size >= runtime->period_size) {
 				s->size %= runtime->period_size;
-				spin_unlock(&s->lock);
+				raw_spin_unlock(&s->lock);
 				snd_pcm_period_elapsed(substream);
-				spin_lock(&s->lock);
+				raw_spin_lock(&s->lock);
 			}
 			mod_timer(&prtd->timer, jiffies + 1);
-			spin_unlock(&s->lock);
+			raw_spin_unlock(&s->lock);
 		} else {
 			mod_timer(&prtd->timer, jiffies + 1);
 		}
 	} else {
 		if (s->active == 1) {
-			spin_lock(&s->lock);
+			raw_spin_lock(&s->lock);
 			if (s->device_type == AML_AUDIO_I2SIN)
 				last_ptr = audio_in_i2s_wr_ptr();
 			else
@@ -456,12 +456,12 @@ static void aml_i2s_timer_callback(unsigned long data)
 			s->size += bytes_to_frames(substream->runtime, size);
 			if (s->size >= runtime->period_size) {
 				s->size %= runtime->period_size;
-				spin_unlock(&s->lock);
+				raw_spin_unlock(&s->lock);
 				snd_pcm_period_elapsed(substream);
-				spin_lock(&s->lock);
+				raw_spin_lock(&s->lock);
 			}
 			mod_timer(&prtd->timer, jiffies + 1);
-			spin_unlock(&s->lock);
+			raw_spin_unlock(&s->lock);
 		} else {
 			mod_timer(&prtd->timer, jiffies + 1);
 		}
@@ -531,7 +531,7 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 	pr_info("hrtimer inited..\n");
 #endif
 
-	spin_lock_init(&prtd->s.lock);
+	raw_spin_lock_init(&prtd->s.lock);
 	s->xrun_num = 0;
 	/* WRITE_MPEG_REG_BITS(MPLL_I2S_CNTL, 1,14, 1); */
 	mutex_lock(&gate_mutex);

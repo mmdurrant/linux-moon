@@ -179,20 +179,20 @@ static void aml_pcm2bt_timer_rearm(struct aml_pcm_runtime_data *prtd)
 static int aml_pcm2bt_timer_start(struct aml_pcm_runtime_data *prtd)
 {
 	pcm_debug("%s\n", __func__);
-	spin_lock(&prtd->lock);
+	raw_spin_lock(&prtd->lock);
 	aml_pcm2bt_timer_rearm(prtd);
 	prtd->running = 1;
-	spin_unlock(&prtd->lock);
+	raw_spin_unlock(&prtd->lock);
 	return 0;
 }
 
 static int aml_pcm2bt_timer_stop(struct aml_pcm_runtime_data *prtd)
 {
 	pcm_debug("%s\n", __func__);
-	spin_lock(&prtd->lock);
+	raw_spin_lock(&prtd->lock);
 	prtd->running = 0;
 	del_timer(&prtd->timer);
-	spin_unlock(&prtd->lock);
+	raw_spin_unlock(&prtd->lock);
 	return 0;
 }
 
@@ -205,7 +205,7 @@ static void aml_pcm2bt_timer_callback(unsigned long data)
 	unsigned int elapsed = 0;
 	unsigned int datasize = 0;
 
-	spin_lock_irqsave(&prtd->lock, flags);
+	raw_spin_lock_irqsave(&prtd->lock, flags);
 	aml_pcm2bt_timer_update(prtd);
 	aml_pcm2bt_timer_rearm(prtd);
 	elapsed = prtd->peroid_elapsed;
@@ -215,7 +215,7 @@ static void aml_pcm2bt_timer_callback(unsigned long data)
 		prtd->data_size -=
 		    frames_to_bytes(runtime, runtime->period_size);
 	}
-	spin_unlock_irqrestore(&prtd->lock, flags);
+	raw_spin_unlock_irqrestore(&prtd->lock, flags);
 	if (elapsed) {
 		if (elapsed > 1)
 			pr_info("PCM timer callback not fast enough!\n");
@@ -364,7 +364,7 @@ static int aml_pcm2bt_open(struct snd_pcm_substream *substream)
 	runtime->private_data = prtd;
 	aml_pcm2bt_timer_create(substream);
 	prtd->substream = substream;
-	spin_lock_init(&prtd->lock);
+	raw_spin_lock_init(&prtd->lock);
 
 	return 0;
  out:
