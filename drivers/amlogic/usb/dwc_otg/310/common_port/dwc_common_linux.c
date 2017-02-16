@@ -837,7 +837,7 @@ void DWC_TIMER_CANCEL(dwc_timer_t *timer)
 /* Wait Queues */
 
 struct dwc_waitq {
-	wait_queue_head_t queue;
+	struct swait_head queue;
 	int abort;
 };
 
@@ -850,7 +850,7 @@ dwc_waitq_t *DWC_WAITQ_ALLOC(void)
 		return NULL;
 	}
 
-	init_waitqueue_head(&wq->queue);
+	init_swait_head(&wq->queue);
 	wq->abort = 0;
 	return wq;
 }
@@ -862,7 +862,7 @@ void DWC_WAITQ_FREE(dwc_waitq_t *wq)
 
 int32_t DWC_WAITQ_WAIT(dwc_waitq_t *wq, dwc_waitq_condition_t cond, void *data)
 {
-	int result = wait_event_interruptible(wq->queue,
+	int result = swait_event_interruptible(wq->queue,
 					      cond(data) || wq->abort);
 	if (result == -ERESTARTSYS) {
 		wq->abort = 0;
@@ -886,7 +886,7 @@ int32_t DWC_WAITQ_WAIT_TIMEOUT(dwc_waitq_t *wq, dwc_waitq_condition_t cond,
 			       void *data, int32_t msecs)
 {
 	int32_t tmsecs;
-	int result = wait_event_interruptible_timeout(wq->queue,
+	int result = swait_event_interruptible_timeout(wq->queue,
 						      cond(data) || wq->abort,
 						      msecs_to_jiffies(msecs));
 	if (result == -ERESTARTSYS) {
@@ -919,13 +919,13 @@ int32_t DWC_WAITQ_WAIT_TIMEOUT(dwc_waitq_t *wq, dwc_waitq_condition_t cond,
 void DWC_WAITQ_TRIGGER(dwc_waitq_t *wq)
 {
 	wq->abort = 0;
-	wake_up_interruptible(&wq->queue);
+	swait_wake_interruptible(&wq->queue);
 }
 
 void DWC_WAITQ_ABORT(dwc_waitq_t *wq)
 {
 	wq->abort = 1;
-	wake_up_interruptible(&wq->queue);
+	swait_wake_interruptible(&wq->queue);
 }
 
 
